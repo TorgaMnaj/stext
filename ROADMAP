@@ -1,0 +1,5 @@
+# Blueprint planing contains only steps on 1.x.x and x.1.x level and not minor changes.
+# Each changelog record uses same versioning naming and same test naming.
+
+--- 0.1.0:
+	.Placeholder for project planing, architecture, steps and versions.

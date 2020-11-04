@@ -1,0 +1,17 @@
+
+				stext 0.1.0
+
+Syntax for changelog:
+	1.x.x - Marks major change of application. Previous APIs are no longer usable.
+	x.1.x - Marks added functionality to application.
+	x.x.1 - Marks minor changes and improvements of an application.
+
+	1.0.0 - Marks first usable complete version of an applications.
+	< 1.0.0 - Marks development of new application
+	> 1.0.0 - Marks upgrades of an existing functional application
+
+	Each 1.x.x and x.1.x changelog record is previously and equaly planned in BLUEPRINT
+	and has equal tests in ./tests directory.
+
+
+

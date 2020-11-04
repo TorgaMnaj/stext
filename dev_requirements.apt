@@ -1,0 +1,10 @@
+python3
+build-essential
+libssl-dev
+libffi-dev
+python-dev
+python3-pip
+python3-virtualenv
+python3-pytest
+pylint
+shellcheck

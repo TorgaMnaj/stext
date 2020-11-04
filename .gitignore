@@ -1,0 +1,13 @@
+*.egg-info
+*.pyc
+.cache/
+.pytest_cache/
+build/
+.idea/
+dist/
+node_modules/
+venv/
+.github
+logs/
+log/
+include/
