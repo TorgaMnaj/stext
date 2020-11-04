@@ -18,3 +18,6 @@ Syntax for changelog:
 --- 0.1.0 - Directory and ROADMAP.
     Project directory clean and setup. ROADMAP writen.
 
+--- 0.2.0 - St file creation.
+    St file creation function.
+
