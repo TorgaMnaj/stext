@@ -21,3 +21,6 @@ Syntax for changelog:
 --- 0.2.0 - St file creation.
     St file creation function.
 
+--- 0.2.1 - File analysis.
+    Analysis for todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics in file.
+
