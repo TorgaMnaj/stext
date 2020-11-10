@@ -46,141 +46,188 @@ infilesyntax = """
 
 
 def check_and_get_arguments():
-	"""
-	Checks arguments and chooses an action.
-	:return:
-	:rtype:
-	"""
-	if len(sys.argv) < 2:
-		print("\nAt least one argument needed.")
-		print(usage)
-	elif sys.argv[1] == "-c":
-		filename = sys.argv[2]
-		create_file(filename)
-	elif sys.argv[1] == "-r":
-		filename = sys.argv[2]
-		index_file(filename)
-	return True
+    """
+    Checks arguments and chooses an action.
+    :return:
+    :rtype:
+    """
+    if len(sys.argv) < 2:
+        print("\nAt least one argument needed.")
+        print(usage)
+    elif sys.argv[1] == "-c":
+        filename = sys.argv[2]
+        create_file(filename)
+    elif sys.argv[1] == "-r":
+        filename = sys.argv[2]
+        index_file(filename)
+    return True
 
 
 def create_file(filename):
-	"""
-	Function for .st file creation.
-	:return:
-	:rtype:
-	"""
-	if "." in filename:
-		filename = filename.split(".")[0]
-	with open(filename + ".st", "w") as o:
-		o.write("\n\t\t" + filename + "\n")
-		o.write(infilesyntax)
-	return True
+    """
+    Function for .st file creation.
+    :return:
+    :rtype:
+    """
+    if "." in filename:
+        filename = filename.split(".")[0]
+    with open(filename + ".st", "w") as o:
+        o.write("\n\t\t" + filename + "\n")
+        o.write(infilesyntax)
+    return True
 
 
 def index_file(filename):
-	"""
-	Analyzes given file.
-	:param filename:
-	:type filename:
-	:return:
-	:rtype:
-	"""
-	with open(filename, "r") as r:
-		filelines = r.read().splitlines()
-		filelines = list(enumerate(filelines, start=1))
-	# get just indexing text:
-	formtext = []
-	reading = False
-	for i in filelines:
-		if reading:
-			formtext.append(i)
-		if i[1].startswith("#IB:"):
-			reading = True
-		elif i[1].startswith("#IE:"):
-			reading = False
-	# get indexes:
-	todos = []
-	links = []
-	blockcodecodes = []
-	linecodes = []
-	apendixes = []
-	chapters = []
-	#
-	ch = []
-	code = []
-	apdx = []
+    """
+    Analyzes given file.
+    :param filename:
+    :type filename:
+    :return:
+    :rtype:
+    """
+    with open(filename, "r") as r:
+        filelines = r.read().splitlines()
+        filelines = list(enumerate(filelines, start=1))
+    # get just indexing text:
+    formtext = []
+    reading = False
+    for i in filelines:
+        if reading:
+            formtext.append(i)
+        if i[1].startswith("#IB:"):
+            reading = True
+        elif i[1].startswith("#IE:"):
+            reading = False
+    # get indexes:
+    todos = []
+    links = []
+    blockcodecodes = []
+    linecodes = []
+    apendixes = []
+    chapters = []
+    #
+    ch = []
+    code = []
+    apdx = []
 
-	#
-	for i in formtext:
-		# detecting todo:
-		if "# todo:" in i[1].lower():
-			todos.append(i)
-		# links detection:
-		if "#@ " in i[1]:
-			links.append(i)
-		# single code detection:
-		if "#>>>" in i[1]:
-			linecodes.append(i)
-		# blockcode detection:
-		if "```" in i[1] and not code:
-			code.append(i)
-		elif code and i[1] != "```":
-			code.append(i)
-		elif "```" in i[1] and code:
-			code.append(i)
-			blockcodecodes.append(code)
-			code = []
-		# appendix detection:
-		if "#<:" in i[1]:
-			apdx.append(i)
-		elif apdx:
-			apdx.append(i)
-		if "#:>" in i[1]:
-			apendixes.append(apdx)
-			apdx = []
-		# chapters detection
-		if "##:" in i[1]:
-			if ch:
-				chapters.append(ch)
-				ch = []
-			ch.append(i)
-		elif "#<:" in i[1] or "#IE:" in i[1]:
-			if ch:
-				chapters.append(ch)
-				ch = []
-		elif ch:
-			ch.append(i)
+    #
+    for i in formtext:
+        # detecting todo:
+        if "# todo:" in i[1].lower():
+            todos.append(i)
+        # links detection:
+        if "#@ " in i[1]:
+            links.append(i)
+        # single code detection:
+        if "#>>>" in i[1]:
+            linecodes.append(i)
+        # blockcode detection:
+        if "```" in i[1] and not code:
+            code.append(i)
+        elif code and i[1] != "```":
+            code.append(i)
+        elif "```" in i[1] and code:
+            code.append(i)
+            blockcodecodes.append(code)
+            code = []
+        # appendix detection:
+        if "#<:" in i[1]:
+            apdx.append(i)
+        elif apdx:
+            apdx.append(i)
+        if "#:>" in i[1]:
+            apendixes.append(apdx)
+            apdx = []
+        # chapters detection
+        if "##:" in i[1]:
+            if ch:
+                chapters.append(ch)
+                ch = []
+            ch.append(i)
+        elif "#<:" in i[1] or "#IE:" in i[1]:
+            if ch:
+                chapters.append(ch)
+                ch = []
+        elif ch:
+            ch.append(i)
 
-	# topics detection:
-	alltopics = []
-	if chapters:
-		chaptertopics = []
-		for chapter in chapters:
-			topic = []
-			for chline in chapter:
-				if "#:: " in chline[1]:
-					if topic:
-						chaptertopics.append(topic)
-						topic = []
-					topic.append(chline)
-				elif topic:
-					topic.append(chline)
-			chaptertopics.append(topic)
-			alltopics.append(chaptertopics)
-			chaptertopics = []
-	else:
-		topic = []
-		for chline in formtext:
-			if "#:: " in chline[1]:
-				if topic:
-					alltopics.append(topic)
-					topic = []
-				topic.append(chline)
-			elif topic:
-				topic.append(chline)
-		if topic:
-			alltopics.append(topic)
-	return todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics
+    # topics detection:
+    alltopics = []
+    if chapters:
+        chaptertopics = []
+        for chapter in chapters:
+            topic = []
+            for chline in chapter:
+                if "#:: " in chline[1]:
+                    if topic:
+                        chaptertopics.append(topic)
+                        topic = []
+                    topic.append(chline)
+                elif topic:
+                    topic.append(chline)
+            chaptertopics.append(topic)
+            alltopics.append(chaptertopics)
+            chaptertopics = []
+    else:
+        topic = []
+        for chline in formtext:
+            if "#:: " in chline[1]:
+                if topic:
+                    alltopics.append(topic)
+                    topic = []
+                topic.append(chline)
+            elif topic:
+                topic.append(chline)
+        if topic:
+            alltopics.append(topic)
+    return todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics
 
 
-print(str(index_file("./pytests/test_text.st")))
+def reformat_file(filename):
+    """
+    Function for reformating given file,
+    according to .st syntax.
+    :param filename:
+    :type filename:
+    :return:
+    :rtype:
+    """
+    with open(filename, "r") as r:
+        filelines = r.read().splitlines()
+    newfile = []
+    for i in filelines:
+        if "todo:" in i.lower():
+            r = i.lower().split("todo:")[1]
+            i = "# TODO:" + r.lower()
+        newfile.append(i)
+    filelines = []
+    for i in newfile:
+        if "##: " in i:
+            i = i.upper()
+        filelines.append(i)
+    newfile = []
+    for i in filelines:
+        if "#:: " in i:
+            i = i.title()
+        newfile.append(i)
+    retfile = []
+    empty = "n"
+    # formating empty lines:
+    for i in newfile:
+        if i == "":
+            if empty != "":
+                retfile.append(i)
+        else:
+            retfile.append(i)
+        empty = i
+    rfile = []
+    for i in retfile:
+        if "##:" in i or "#<:" in i:
+            for _ in range(3):
+                rfile.append("")
+        elif "#::" in i:
+            for _ in range(2):
+                rfile.append("")
+        rfile.append(i)
+    return rfile
+
