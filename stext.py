@@ -7,6 +7,10 @@ Modules creates and analyzes .st files.
 
 import sys
 
+linelength = 77
+pagelength = 5
+bline = "#" * (linelength + pagelength)
+
 usage = """
 Usage: stext.sh
 -c filename	        Create new .stx file
@@ -20,23 +24,25 @@ Usage: stext.sh
 -ref filename           Reformat and reindex file
 """
 
-infilesyntax = """
-###############################################################################
-                                                                              #
-                                                                              #
-# .stx files syntax:                                                          #
-##:       - chapter                                                           #
-#::       - topic in chapter                                                  #
-#<:      - appendix begin                                                     #
-#:>      - appendix end                                                       #
-#@       - link                                                               #
-# TODO:  - todo                                                               #
-```      - beggining of multi line code                                       #
-```      - end of multi line code                                             #
-#>>>     - single line code                                                   #
-                                                                              #
-                                                                              #
-###############################################################################
+syntax = \
+    "\n\n" + bline + """
+
+# SYNTAX:
+
+##:       - chapter
+#::       - topic in chapter
+#<:      - appendix begin
+#:>      - appendix end
+#@       - link
+# TODO:  - todo
+```      - beggining of multi line code
+```      - end of multi line code
+#>>>     - single line code
+
+""" + bline + "\n"
+
+index = """
+
 #IB: indexing begins:
 
 
@@ -72,8 +78,8 @@ def create_file(filename):
     if "." in filename:
         filename = filename.split(".")[0]
     with open(filename + ".st", "w") as o:
-        o.write("\n\t\t" + filename + "\n")
-        o.write(infilesyntax)
+        o.write(syntax)
+        o.write(index)
     return True
 
 
@@ -194,8 +200,20 @@ def reformat_file(filename):
     """
     with open(filename, "r") as r:
         filelines = r.read().splitlines()
-    newfile = []
+
+    # get just indexing text:
+    formtext = []
+    reading = False
     for i in filelines:
+        if i.startswith("#IB:"):
+            reading = True
+        if reading:
+            formtext.append(i)
+        elif i.startswith("#IE:"):
+            reading = False
+
+    newfile = []
+    for i in formtext:
         if "todo:" in i.lower():
             r = i.lower().split("todo:")[1]
             i = "# TODO:" + r.lower()
@@ -229,5 +247,78 @@ def reformat_file(filename):
             for _ in range(2):
                 rfile.append("")
         rfile.append(i)
-    return rfile
+    # Write table of content to file:
+    retfile = ""
+    retfile += syntax
+    for i in rfile:
+        if i.startswith("#IB: "):
+            for _ in range(2):
+                retfile += "\n"
+            todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics = index_file(filename)
+            content = get_chapters_topics_appendixes_string(apendixes, chapters, alltopics)
+            retfile += content
+            for _ in range(3):
+                retfile += "\n"
+            retfile += bline + "\n\n\n"
+        retfile += i + "\n"
+    return retfile
 
+
+def get_chapters_topics_appendixes_string(apendixes, chapters, alltopics):
+    """
+    Function that returns pretty printed chapters if presented,
+    topics and appendixes for stdout.
+    :return:
+    :rtype:
+    """
+    out = "\nTABLE OF CONTENTS:\n\n"
+    if chapters:
+        for chapt in chapters:
+            # get chapters:
+            pre = chapt[0][1].split("##: ")[1]
+            add = (linelength - len(pre)) * "."
+            ll = str(chapt[0][0])
+            post = str((pagelength - len(ll)) * ".") + ll
+            out += str(pre + add + post)
+            out += "\n"
+            # get topics:
+            for toplist in chapt:
+                if toplist[1].startswith("#::"):
+                    tpre = toplist[1].split("#:: ")[1]
+                    if tpre[0] == " ":
+                        tpre = tpre[1:]
+                    pre = " " + tpre
+                    add = (linelength - len(pre)) * "."
+                    ll = str(toplist[0])
+                    post = str((pagelength - len(ll)) * ".") + ll
+                    out += str(pre + add + post)
+                    out += "\n"
+            out += "\n"
+    else:
+        # get topics:
+        for toplist in alltopics:
+            if toplist[0][1].startswith("#::"):
+                tpre = toplist[0][1].split("#:: ")[1]
+                if tpre[0] == " ":
+                    tpre = tpre[1:]
+                pre = " " + tpre
+                add = (linelength - len(pre)) * "."
+                ll = str(toplist[0][0])
+                post = str((pagelength - len(ll)) * ".") + ll
+                out += str(pre + add + post)
+                out += "\n"
+        out += "\n"
+
+    if apendixes:
+        out += "\nAPENDIXES:\n\n"
+        for ap in apendixes:
+            tpre = ap[0][1].split("#<: ")[1]
+            if tpre[0] == " ":
+                tpre = tpre[1:]
+            pre = " " + tpre
+            add = (linelength - len(pre)) * "."
+            ll = str(ap[0][0])
+            post = str((pagelength - len(ll)) * ".") + ll
+            out += str(pre + add + post)
+            out += "\n"
+    return out
