@@ -5,6 +5,7 @@
 Modules creates and analyzes .st files.
 """
 
+import os
 import sys
 
 linelength = 77
@@ -13,15 +14,10 @@ bline = "#" * (linelength + pagelength)
 
 usage = """
 Usage: stext.sh
--c filename	        Create new .stx file
--r filename 		Read .stx files menu
- filename		Read .stx files menu
--ch filename		Show .stx chapters
--t filename		Show .stx topics (with chapter arg precended shows only specific chapters topics)
--code filename		Show .stx code snipets (with chapter arg precended shows only specific chapters snipets)
--a filename		Show .stx appendix, when title provided, shows specific appendix
--links filename		Show .stx links
--ref filename           Reformat and reindex file
+-c filename	        Create new .st file
+-r filename 		Read .st files content
+   filename		Read .st files content
+-f filename             Format and reindex file
 """
 
 syntax = \
@@ -29,15 +25,15 @@ syntax = \
 
 # SYNTAX:
 
-##:       - chapter
-#::       - topic in chapter
-#<:      - appendix begin
-#:>      - appendix end
-#@       - link
-# TODO:  - todo
-```      - beggining of multi line code
-```      - end of multi line code
-#>>>     - single line code
+##~         - chapter
+#→          - topic in chapter
+#:<         - appendix begin
+#:>         - appendix end
+#@          - link
+# TODO:     - todo
+```         - beggining of multi line code
+```         - end of multi line code
+#>>>        - single line code
 
 """ + bline + "\n"
 
@@ -51,6 +47,19 @@ index = """
 """
 
 
+def read_file(filename):
+    """
+    Reads given file.
+    :param filename:
+    :type filename:
+    :return:
+    :rtype:
+    """
+    with open(filename) as o:
+        r = o.read()
+    return r
+
+
 def check_and_get_arguments():
     """
     Checks arguments and chooses an action.
@@ -60,12 +69,30 @@ def check_and_get_arguments():
     if len(sys.argv) < 2:
         print("\nAt least one argument needed.")
         print(usage)
-    elif sys.argv[1] == "-c":
-        filename = sys.argv[2]
-        create_file(filename)
-    elif sys.argv[1] == "-r":
-        filename = sys.argv[2]
-        index_file(filename)
+    elif len(sys.argv) == 2:
+        filename = sys.argv[1]
+        todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics = index_file(filename)
+        print(get_chapters_topics_appendixes_string(apendixes, chapters, alltopics))
+    elif len(sys.argv) == 3:
+        if sys.argv[1] == "-c":
+            filename = sys.argv[2]
+            create_file(filename)
+        elif sys.argv[1] == "-r":
+            filename = sys.argv[2]
+            todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics = index_file(filename)
+            print(get_chapters_topics_appendixes_string(apendixes, chapters, alltopics))
+        elif sys.argv[1] == "-f":
+            filename = sys.argv[2]
+            rf = reformat(filename)
+            os.system("mv -f " + filename + " " + filename + ".bak")
+            with open(filename, "w") as o:
+                o.write(rf)
+        else:
+            print("\nWrong syntax.")
+            print(usage)
+    else:
+        print("\nWrong syntax.")
+        print(usage)
     return True
 
 
@@ -83,27 +110,26 @@ def create_file(filename):
     return True
 
 
-def index_file(filename):
+def index_file(filestr):
     """
     Analyzes given file.
-    :param filename:
-    :type filename:
+    :param filestr:
+    :type filestr:
     :return:
     :rtype:
     """
-    with open(filename, "r") as r:
-        filelines = r.read().splitlines()
-        filelines = list(enumerate(filelines, start=1))
+    filelines = filestr.splitlines()
     # get just indexing text:
     formtext = []
     reading = False
     for i in filelines:
         if reading:
             formtext.append(i)
-        if i[1].startswith("#IB:"):
+        if i.startswith("#IB:"):
             reading = True
-        elif i[1].startswith("#IE:"):
+        elif i.startswith("#IE:"):
             reading = False
+    formtext = list(enumerate(formtext, start=1))
     # get indexes:
     todos = []
     links = []
@@ -137,7 +163,7 @@ def index_file(filename):
             blockcodecodes.append(code)
             code = []
         # appendix detection:
-        if "#<:" in i[1]:
+        if "#:<" in i[1]:
             apdx.append(i)
         elif apdx:
             apdx.append(i)
@@ -145,12 +171,12 @@ def index_file(filename):
             apendixes.append(apdx)
             apdx = []
         # chapters detection
-        if "##:" in i[1]:
+        if "##~" in i[1]:
             if ch:
                 chapters.append(ch)
                 ch = []
             ch.append(i)
-        elif "#<:" in i[1] or "#IE:" in i[1]:
+        elif "#:<" in i[1] or "#IE:" in i[1]:
             if ch:
                 chapters.append(ch)
                 ch = []
@@ -164,7 +190,7 @@ def index_file(filename):
         for chapter in chapters:
             topic = []
             for chline in chapter:
-                if "#:: " in chline[1]:
+                if "#→ " in chline[1]:
                     if topic:
                         chaptertopics.append(topic)
                         topic = []
@@ -177,7 +203,7 @@ def index_file(filename):
     else:
         topic = []
         for chline in formtext:
-            if "#:: " in chline[1]:
+            if "#→ " in chline[1]:
                 if topic:
                     alltopics.append(topic)
                     topic = []
@@ -189,18 +215,16 @@ def index_file(filename):
     return todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics
 
 
-def reformat_file(filename):
+def reformat_filestr(filestr):
     """
     Function for reformating given file,
     according to .st syntax.
-    :param filename:
-    :type filename:
+    :param filestr:
+    :type filestr:
     :return:
     :rtype:
     """
-    with open(filename, "r") as r:
-        filelines = r.read().splitlines()
-
+    filelines = filestr.splitlines()
     # get just indexing text:
     formtext = []
     reading = False
@@ -220,12 +244,12 @@ def reformat_file(filename):
         newfile.append(i)
     filelines = []
     for i in newfile:
-        if "##: " in i:
+        if "##~ " in i:
             i = i.upper()
         filelines.append(i)
     newfile = []
     for i in filelines:
-        if "#:: " in i:
+        if "#→ " in i:
             i = i.title()
         newfile.append(i)
     retfile = []
@@ -240,27 +264,55 @@ def reformat_file(filename):
         empty = i
     rfile = []
     for i in retfile:
-        if "##:" in i or "#<:" in i:
-            for _ in range(3):
+        if "##~" in i or "#:<" in i:
+            for _ in range(4):
                 rfile.append("")
-        elif "#::" in i:
+        elif "#→" in i:
             for _ in range(2):
                 rfile.append("")
         rfile.append(i)
+    return "\n".join(rfile)
+
+
+def reformat(filename):
+    """
+    Writes preamble and formated text to a string.
+    :return:
+    :rtype:
+    """
+    filestr = read_file(filename)
+    refilestr = reformat_filestr(filestr)
+    #
+    todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics = index_file(refilestr)
+    content = get_chapters_topics_appendixes_string(apendixes, chapters, alltopics)
     # Write table of content to file:
     retfile = ""
     retfile += syntax
-    for i in rfile:
-        if i.startswith("#IB: "):
-            for _ in range(2):
-                retfile += "\n"
-            todos, links, blockcodecodes, linecodes, apendixes, chapters, alltopics = index_file(filename)
-            content = get_chapters_topics_appendixes_string(apendixes, chapters, alltopics)
-            retfile += content
-            for _ in range(3):
-                retfile += "\n"
-            retfile += bline + "\n\n\n"
-        retfile += i + "\n"
+    for _ in range(2):
+        retfile += "\n"
+    retfile += content
+    for _ in range(3):
+        retfile += "\n"
+    retfile += bline + "\n\n\n"
+    # Rewrite content lines numbers due added conten index to file beginning:
+    ri = retfile.split("\n")
+    preambulegth = len(ri)
+    newri = []
+    nlist = [str(x) for x in range(0, 10)]
+    for line in ri:
+        snum = ""
+        for mark in line[-10:]:
+            if mark in nlist:
+                snum += mark
+        if snum:
+            snum = int(snum)
+            snum += preambulegth
+            line = line[:-len(str(snum))]
+            line += str(snum)
+        newri.append(line)
+    # Join file preamble and its content:
+    retfile = "\n".join(newri)
+    retfile += refilestr
     return retfile
 
 
@@ -275,7 +327,7 @@ def get_chapters_topics_appendixes_string(apendixes, chapters, alltopics):
     if chapters:
         for chapt in chapters:
             # get chapters:
-            pre = chapt[0][1].split("##: ")[1]
+            pre = chapt[0][1].split("##~ ")[1]
             add = (linelength - len(pre)) * "."
             ll = str(chapt[0][0])
             post = str((pagelength - len(ll)) * ".") + ll
@@ -283,8 +335,8 @@ def get_chapters_topics_appendixes_string(apendixes, chapters, alltopics):
             out += "\n"
             # get topics:
             for toplist in chapt:
-                if toplist[1].startswith("#::"):
-                    tpre = toplist[1].split("#:: ")[1]
+                if toplist[1].startswith("#→"):
+                    tpre = toplist[1].split("#→ ")[1]
                     if tpre[0] == " ":
                         tpre = tpre[1:]
                     pre = " " + tpre
@@ -297,8 +349,8 @@ def get_chapters_topics_appendixes_string(apendixes, chapters, alltopics):
     else:
         # get topics:
         for toplist in alltopics:
-            if toplist[0][1].startswith("#::"):
-                tpre = toplist[0][1].split("#:: ")[1]
+            if toplist[0][1].startswith("#→"):
+                tpre = toplist[0][1].split("#→ ")[1]
                 if tpre[0] == " ":
                     tpre = tpre[1:]
                 pre = " " + tpre
@@ -312,7 +364,7 @@ def get_chapters_topics_appendixes_string(apendixes, chapters, alltopics):
     if apendixes:
         out += "\nAPENDIXES:\n\n"
         for ap in apendixes:
-            tpre = ap[0][1].split("#<: ")[1]
+            tpre = ap[0][1].split("#:< ")[1]
             if tpre[0] == " ":
                 tpre = tpre[1:]
             pre = " " + tpre
@@ -322,3 +374,6 @@ def get_chapters_topics_appendixes_string(apendixes, chapters, alltopics):
             out += str(pre + add + post)
             out += "\n"
     return out
+
+
+check_and_get_arguments()
